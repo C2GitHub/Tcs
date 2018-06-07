@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tcs</title>
+    <style>
+        .map{
+            width: 600px;
+            height: 400px;
+            background-color: #ccc;
+            position: relative;
+            margin: 30px auto;
+        }
+    </style>
+
+</head>
+<body>
+<div class="map">
+
+</div>
+
+
+<script>
+    //获取map设置成全局变量
+    var map = document.querySelector('.map');
+
+    //food模块
+    (function () {
+        //设置elements数组用于储存food示例对象
+        var  elements = [];
+        function Food(x,y,width,height,color) {
+            this.x = x || 0;
+            this.y= y || 0;
+            this.width = width || 20;
+            this.height = height ||20;
+            this.color = color || 'green';
+        }
+
+        //设备food初始化方法
+        Food.prototype.init = function () {
+            clear();
+            //产生小方块
+            var div = document.createElement('div')
+            map.appendChild(div);
+            //产生随机坐标值
+            var x  = Math.floor(Math.random()*map.offsetWidth/this.width);
+            var y  = Math.floor(Math.random()*map.offsetHeight/this.height);
+            this.x = x;
+            this.y = y;
+            div.style.width  = this.width +'px';
+            div.style.height = this.height +'px';
+            div.style.backgroundColor = this.color;
+            div.style.position ='absolute';
+            div.style.left = this.x*this.width +'px';
+            div.style.top = this.y*this.height +'px';
+            //将div小方块放入到elements中
+            elements.push(div);
+        };
+
+        //清楚小方块方法
+        function clear() {
+            for (var i = 0; i < elements.length; i++) {
+                elements[i].parentNode.removeChild(elements[i]);
+                elements.splice(i,1);
+            }
+        }
+
+        //将Food设置成全局函数
+        window.Food = Food;
+
+    })();
+
+
+    //Snake模块
+    (function () {
+        //设置elements用于储存body个数
+        var elements = [];
+
+        //Snake构造函数
+        function Snake(width,height,direction) {
+            this.width = width || 20;
+            this.height = height || 20;
+            this.body = [
+                {x:3,y:2,color:'red'},
+                {x:2,y:2,color:'orange'},
+                {x:1,y:2,color:'orange'},
+            ];
+            this.direction = direction || 'right';
+        }
+        Snake.prototype.init = function () {
+            //清除旧数据
+            clear();
+            //循环产生新数据
+            for (var i=0;i<=this.body.length-1;i++) {
+                var div = document.createElement('div');
+                div.style.width = this.width + 'px';
+                div.style.height = this.height +'px';
+                div.style.position = 'absolute';
+                div.style.left = this.body[i].x*this.width + 'px';
+                div.style.top = this.body[i].y*this.height + 'px';
+                div.style.backgroundColor = this.body[i].color;
+                div.style.borderRadius = '50%';
+
+                //将每一个身体添加到map中
+                map.appendChild(div);
+
+                //将创建好的body储存到elements中
+                elements.push(div);
+            }
+            elements[0].style.zIndex = 999;
+        };
+
+        //snake移动函数
+        Snake.prototype.move = function () {
+            for(var i = this.body.length-1;i >0; i--){
+                this.body[i].x = this.body[i-1].x;
+                this.body[i].y = this.body[i-1].y;
+            }
+            switch(this.direction){
+                case 'right': this.body[0].x +=1;break;
+                case 'left': this.body[0].x -=1;break;
+                case 'top': this.body[0].y -=1;break;
+                case 'bottom': this.body[0].y +=1;break;
+            }
+
+        };
+        //旧数据清除
+        function clear(){
+            for (var i = elements.length-1; i >=0; i--) {
+                elements[i].parentNode.removeChild(elements[i]);
+                elements.splice(i,1);
+            }
+        }
+        window.Snake = Snake;
+    })();
+
+    //构建Game函数
+    (function () {
+        function Game() {
+            this.food = new Food;
+            this.snake = new Snake;
+
+        }
+        //初始化元素模块
+        Game.prototype.init = function () {
+            var that = this;
+            this.food.init();
+            this.snake.init();
+            this.bindKey();
+
+            var timer = setInterval(function () {
+                this.snake.init();
+                this.snake.move();
+                this.eatFood();
+
+                //判别出界，停止游戏
+                //获取snake头部位置
+                var headerX = this.snake.body[0].x*this.snake.width;
+                var headerY = this.snake.body[0].y*this.snake.height;
+                //结束游戏判定
+                if(headerX<0 || headerX>=map.offsetWidth || headerY<0 || headerY >=map.offsetHeight){
+                    clearInterval(timer);
+                    alert('游戏结束');
+                }
+            }.bind(that),150)
+        };
+
+        //监听键盘事件，动态改变snake方向
+        Game.prototype.bindKey = function(){
+            var that = this;
+
+            addEventListener('keydown',function (e) {
+                e = e || window.event;
+                //判断键值，修改参数
+                switch(e.keyCode){
+                    case 37:that.snake.direction = 'left';break;
+                    case 38:that.snake.direction = 'top';break;
+                    case 39:that.snake.direction = 'right';break;
+                    case 40:that.snake.direction = 'bottom';break;
+                }
+            })
+        };
+
+        //构建吃食物动作
+        Game.prototype.eatFood = function(){
+            var that = this;
+            //获取食物和snake头部位置
+            var foodX = that.food.x*that.food.width;
+            var foodY = that.food.y*that.food.height;
+            var snHeaderX = that.snake.body[0].x*that.snake.width;
+            var snHeaderY = that.snake.body[0].y*that.snake.height;
+            //console.log(foodX +'---'+ snHeaderX);
+            //console.log(foodY +'---'+ snHeaderY);
+            //位置判断，重合就判定为已吃
+            if(Math.abs(foodX-snHeaderX)<that.food.width/2 && Math.abs(foodY-snHeaderY)<that.food.height/2){
+                that.food.init();
+                //添加snake长度
+                var last = that.snake.body[that.snake.body.length-1];
+                //console.log(last);
+                console.log(that.snake.body);
+                that.snake.body.push({
+                    x:last.x,
+                    y:last.y,
+                    color:last.color
+                });
+
+            }
+        };
+        window.Game = Game;
+    })();
+
+
+    //外部测试代码
+    // var fd = new Food;
+    // fd.init();
+
+    // var sn = new Snake();
+    // sn.init();
+    // sn.move();
+    // sn.init()
+
+    var game = new Game();
+    game.init();
+
+
+</script>
+</body>
+</html>
